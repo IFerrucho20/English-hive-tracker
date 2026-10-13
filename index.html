@@ -92,6 +92,21 @@
     .guide .onfire { display:inline-flex; gap:5px; align-items:center; background:#fff0d6; color:#9b5d11; padding:6px 10px; border-radius:20px; font-size:11px; font-weight:800; }
     @media (max-width:880px) { .stats { grid-template-columns: repeat(2,minmax(0,1fr)); } .footer-grid { grid-template-columns:1fr; } }
     @media (max-width:640px) { .shell { padding:18px 13px 38px; } .top { align-items:flex-start; } .stats, .comparison { grid-template-columns:1fr; } .stat { min-height:132px; } .hive-card { padding:15px 12px; } }
+
+    /* Sesión y sincronización con Firebase: se conserva el diseño original */
+    .account-bar { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px; padding:13px 17px;margin:-10px 0 18px; }
+    .account-info { display:flex;flex-direction:column;gap:4px;min-width:0; }
+    .account-info strong { font-size:13px;color:var(--ink); }
+    .account-info span { font-size:11.5px;color:var(--muted);line-height:1.5; }
+    .account-actions { display:flex;gap:8px;flex-wrap:wrap; }
+    .account-btn { padding:10px 14px;border-radius:10px;font-weight:800;font-size:12px;border:1px solid var(--line);background:#fff;color:var(--navy); }
+    .account-btn.primary { background:var(--navy);color:#fff;border-color:var(--navy); }
+    .account-btn:disabled { opacity:.5;cursor:wait; }
+    .sync-status { font-size:12px;color:#49657c;margin:0 0 16px;padding:10px 14px;background:#eaf1f7;border:1px solid #d5e0ea;border-radius:10px;line-height:1.5; }
+    .sync-status.error { color:#9b4220;background:#fff0e4;border-color:#f0c7ae; }
+    .migration-banner {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:14px 16px;margin:0 0 17px;background:#fff7e9;border:1px solid #f0d6a9;border-radius:12px;}
+    .migration-banner p {margin:0;font-size:12px;color:#84551d;line-height:1.5;max-width:650px;}
+    [hidden] { display:none !important; }
   </style>
 </head>
 <body>
@@ -107,6 +122,23 @@
       </div>
       <div class="start"><label for="start-date">Comencé el</label><input type="date" id="start-date"></div>
     </header>
+
+    <!-- Iniciar sesión para sincronizar entre celular y computador -->
+    <section class="card account-bar" aria-label="Cuenta y sincronización">
+      <div class="account-info">
+        <strong id="account-name">English Hive en la nube</strong>
+        <span id="account-detail">Inicia sesión para guardar tu historial en cualquier dispositivo.</span>
+      </div>
+      <div class="account-actions">
+        <button class="account-btn primary" id="google-login" type="button" disabled>Continuar con Google</button>
+        <button class="account-btn" id="google-logout" type="button" hidden>Cerrar sesión</button>
+      </div>
+    </section>
+    <p id="sync-status" class="sync-status" role="status" aria-live="polite">Conectando con Firebase…</p>
+    <div id="migration-banner" class="migration-banner" hidden>
+      <p>Encontramos registros antiguos guardados en este navegador. Puedes copiarlos a tu cuenta sin sobrescribir los días que ya tengas en la nube.</p>
+      <button id="import-local" class="account-btn" type="button">Importar historial local</button>
+    </div>
 
     <section class="stats" aria-label="Indicadores de progreso">
       <article class="card stat hero"><p class="label">Racha actual</p><div class="number"><span class="flame">🔥</span><span id="streak">0</span> días</div><p class="detail" id="fire-label">Empieza tu racha hoy</p></article>
@@ -149,7 +181,7 @@
           <button class="action missed" id="mark-missed" type="button">○ No cumplí</button>
           <button class="action" id="clear-day" type="button">Quitar marca</button>
         </div>
-        <p class="smallprint">Tus marcas se guardan en este navegador automáticamente. Los días sin registrar no se clasifican como fallidos.</p>
+        <p class="smallprint">Tus marcas se guardan en tu cuenta de Google, no solo en este navegador. Los días sin registrar no se clasifican como fallidos.</p>
       </section>
       <section class="card guide" aria-label="Cómo usar el tracker">
         <h3>Tu sistema de constancia</h3>
@@ -160,8 +192,27 @@
     </div>
   </main>
 
-  <script>
-    // Todo funciona localmente, sin servidores, CDN ni bibliotecas externas.
+  <script type="module">
+    // Firebase SDK modular: importación CDN sin npm ni terminal.
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+    import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+
+    // Configuración pública de la aplicación web registrada en Firebase.
+    // La seguridad del historial depende de Authentication y las reglas de Firestore.
+    const firebaseConfig = {
+      apiKey: 'AIzaSyDzofGQyP-8BRYHRKzDwr2bYjzc_CAkB5w',
+      authDomain: 'english-hive-tracker.firebaseapp.com',
+      projectId: 'english-hive-tracker',
+      storageBucket: 'english-hive-tracker.firebasestorage.app',
+      messagingSenderId: '243743200035',
+      appId: '1:243743200035:web:ff7e967adfc77539d33296'
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
     const STORAGE_KEY = 'english-hive-tracker-v1';
     const WEEKDAYS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
     // Meta orientativa en minutos de lunes a domingo. Puedes editarla aquí.
@@ -174,14 +225,32 @@
     const startOfWeek = (d) => addDays(d, -(d.getDay()+6)%7);
     const today = new Date();
     const todayKey = dateKey(today);
+    // Copia LEGACY del tracker anterior, nunca se borra automáticamente.
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch { saved = {}; }
-    let state = {
-      startDate: /^\d{4}-\d{2}-\d{2}$/.test(saved.startDate) && saved.startDate <= todayKey ? saved.startDate : todayKey,
-      entries: saved.entries && typeof saved.entries === 'object' && !Array.isArray(saved.entries) ? saved.entries : {}
-    };
+    const legacyEntries = Object.fromEntries(
+      Object.entries(saved.entries && typeof saved.entries === 'object' && !Array.isArray(saved.entries) ? saved.entries : {})
+        .filter(([key, value]) => /^\d{4}-\d{2}-\d{2}$/.test(key) && key <= todayKey && (value === 'done' || value === 'missed'))
+    );
+    const legacyStartDate = /^\d{4}-\d{2}-\d{2}$/.test(saved.startDate) && saved.startDate <= todayKey ? saved.startDate : null;
+    let state = { startDate:todayKey, entries:{} };
     let selected = todayKey;
-    const persist = () => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { console.warn('No se pudo guardar el progreso localmente', e); } };
+    let userId = null;
+    let cloudReady = false;
+    let stopListening = null;
+    let pendingWrite = false;
+    const daysRef = () => collection(db, 'users', userId, 'days');
+    const dayRef = (dayId) => doc(db, 'users', userId, 'days', dayId);
+    function setMessage(message, isError=false) {
+      $('sync-status').textContent = message;
+      $('sync-status').classList.toggle('error', isError);
+    }
+    const canEdit = () => Boolean(userId && cloudReady && !pendingWrite);
+    function showMigration() {
+      const hasLocal = Object.keys(legacyEntries).length || (legacyStartDate && legacyStartDate !== todayKey);
+      const alreadyMigrated = userId && localStorage.getItem(`english-hive-migrated-${userId}`) === 'yes';
+      $('migration-banner').hidden = !(userId && cloudReady && hasLocal && !alreadyMigrated);
+    }
     const eligible = (key) => key >= state.startDate && key <= todayKey;
     const status = (key) => state.entries[key] === 'done' || state.entries[key] === 'missed' ? state.entries[key] : 'pending';
     const formatDate = (key) => fromKey(key).toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
@@ -271,7 +340,7 @@
           const key = dateKey(day);
           const btn=document.createElement('button');
           btn.type='button'; btn.className='hex'; btn.dataset.date=key;
-          btn.dataset.status=status(key); btn.disabled=!eligible(key);
+          btn.dataset.status=status(key); btn.disabled=!eligible(key) || !canEdit();
           btn.setAttribute('aria-label',`${formatDate(key)}: ${btn.disabled?'No disponible':status(key)==='done'?'Cumplido':status(key)==='missed'?'No cumplido':'Sin registrar'}`);
           btn.setAttribute('aria-pressed',key===selected?'true':'false');
           if(key===selected) btn.classList.add('selected');
@@ -290,20 +359,132 @@
       $('today-marker').textContent=selected===todayKey?'Hoy':'Día seleccionado';
       $('mark-done').classList.toggle('active',status(selected)==='done');
       $('mark-missed').classList.toggle('active',status(selected)==='missed');
-      $('clear-day').disabled=status(selected)==='pending';
+      $('mark-done').disabled=!canEdit();
+      $('mark-missed').disabled=!canEdit();
+      $('clear-day').disabled=!canEdit() || status(selected)==='pending';
     }
-    function render() { $('start-date').value=state.startDate; $('start-date').max=todayKey; renderStats(); renderHive(); renderDaily(); }
+    function render() { $('start-date').value=state.startDate; $('start-date').max=todayKey; $('start-date').disabled=!canEdit(); renderStats(); renderHive(); renderDaily(); }
     $('hive').addEventListener('click',(e)=>{const btn=e.target.closest('button[data-date]'); if(!btn||btn.disabled)return;selected=btn.dataset.date;renderHive();renderDaily();});
-    function mark(value){ if(!eligible(selected))return; if(value) state.entries[selected]=value; else delete state.entries[selected];persist();render(); }
+    // Guardado en Firestore: se confirma en la colmena mediante onSnapshot.
+    async function mark(value) {
+      if (!eligible(selected) || !canEdit()) return;
+      pendingWrite=true; render();
+      try {
+        if (value) await setDoc(dayRef(selected), { status:value, updatedAt:serverTimestamp() });
+        else await deleteDoc(dayRef(selected));
+        setMessage('✓ Progreso sincronizado con tu cuenta.');
+      } catch (e) {
+        console.error(e);
+        setMessage('No se pudo guardar el día. Comprueba tu conexión y las reglas de Firestore.',true);
+      } finally { pendingWrite=false; render(); }
+    }
     $('mark-done').addEventListener('click',()=>mark('done'));
     $('mark-missed').addEventListener('click',()=>mark('missed'));
     $('clear-day').addEventListener('click',()=>mark(null));
-    $('start-date').addEventListener('change',(e)=>{
+    $('start-date').addEventListener('change',async (e)=>{
       const value=e.target.value;
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||value>todayKey){e.target.value=state.startDate;return;}
-      state.startDate=value; if(selected<value) selected=todayKey;persist();render();
+      if (!canEdit() || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value>todayKey) {
+        e.target.value=state.startDate; return;
+      }
+      pendingWrite=true; render();
+      try {
+        await setDoc(dayRef('__settings__'),{startDate:value,updatedAt:serverTimestamp()});
+        setMessage('✓ Fecha de inicio sincronizada.');
+      } catch(err) {
+        console.error(err); setMessage('No se pudo guardar la fecha de inicio.',true);
+      } finally { pendingWrite=false; render(); }
     });
+
+    // Escucha en tiempo real: la misma cuenta ve los mismos días en PC y móvil.
+    onAuthStateChanged(auth, (user) => {
+      if (stopListening) { stopListening(); stopListening=null; }
+      userId=user?.uid || null;
+      cloudReady=false;
+      state={startDate:todayKey,entries:{}};
+      selected=todayKey;
+      $('google-login').hidden=Boolean(user);
+      $('google-logout').hidden=!user;
+      $('google-login').disabled=false;
+      $('account-name').textContent=user ? (user.displayName || user.email || 'Cuenta Google') : 'English Hive en la nube';
+      $('account-detail').textContent=user ? 'Historial privado asociado a tu cuenta de Google.' : 'Inicia sesión para guardar tus días desde cualquier dispositivo.';
+      $('migration-banner').hidden=true;
+      if (!user) { setMessage('Inicia sesión con Google para empezar a guardar tu progreso.'); render(); return; }
+      setMessage('Cargando historial de Firestore…');
+      stopListening = onSnapshot(daysRef(), (snapshot) => {
+        const entries={};
+        let configuredStart=null;
+        snapshot.forEach((item) => {
+          if (item.id === '__settings__') {
+            const candidate=item.data().startDate;
+            if (typeof candidate==='string' && /^\d{4}-\d{2}-\d{2}$/.test(candidate) && candidate<=todayKey) configuredStart=candidate;
+            return;
+          }
+          const value=item.data().status;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(item.id) && item.id<=todayKey && (value==='done' || value==='missed')) entries[item.id]=value;
+        });
+        const earliest=Object.keys(entries).sort()[0] || todayKey;
+        state={startDate:configuredStart || earliest,entries};
+        cloudReady=true;
+        if (selected<state.startDate) selected=todayKey;
+        setMessage('✓ Historial sincronizado. Tus cambios aparecerán en tus otros dispositivos.');
+        render();showMigration();
+      }, (error) => {
+        console.error('Firestore:',error);
+        cloudReady=false;render();
+        setMessage('No se pudo leer Firestore. Revisa las reglas o la conexión a internet.',true);
+      });
+      render();
+    });
+
+    // Abrimos Google desde un clic real del usuario; evita iniciar popups automáticamente.
+    $('google-login').addEventListener('click',async () => {
+      $('google-login').disabled=true;
+      try {
+        await setPersistence(auth,browserLocalPersistence);
+        await signInWithPopup(auth,provider);
+      } catch (e) {
+        console.error('Google Sign-In:',e);
+        const blocked=['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'];
+        const msg=blocked.includes(e.code)
+          ? 'No se completó el acceso. Permite ventanas emergentes para este sitio y vuelve a intentar.'
+          : e.code==='auth/unauthorized-domain'
+          ? 'Debes autorizar iferrucho20.github.io en Firebase Authentication.'
+          : 'No se pudo iniciar sesión. Revisa la conexión y el detalle en la consola.';
+        setMessage(msg,true);
+      } finally { $('google-login').disabled=false; }
+    });
+    $('google-logout').addEventListener('click',async () => {
+      try { await signOut(auth); } catch (e) { console.error(e); setMessage('No se pudo cerrar sesión.',true); }
+    });
+
+    // Importación opcional: NO borra la copia local y NO pisa días existentes en la nube.
+    $('import-local').addEventListener('click',async () => {
+      if (!canEdit()) return;
+      const entriesToImport=Object.entries(legacyEntries).filter(([key])=>!(key in state.entries));
+      const overlap=Object.keys(legacyEntries).length-entriesToImport.length;
+      if (!confirm(`Se copiarán ${entriesToImport.length} días locales a tu cuenta. ${overlap} días ya existentes en la nube se conservarán sin cambios. ¿Continuar?`)) return;
+      pendingWrite=true;render();
+      try {
+        // Menos de 450 escrituras por lote (límite Firestore: 500).
+        for(let i=0;i<entriesToImport.length;i+=400) {
+          const batch=writeBatch(db);
+          for(const [key,value] of entriesToImport.slice(i,i+400)) batch.set(dayRef(key),{status:value,updatedAt:serverTimestamp()});
+          await batch.commit();
+        }
+        const earliestCloud=Object.keys(state.entries).sort()[0] || todayKey;
+        const earliestLocal=Object.keys(legacyEntries).sort()[0] || todayKey;
+        const start=Math.min(...[state.startDate,legacyStartDate,earliestCloud,earliestLocal].filter(Boolean).map(d=>Number(d.replaceAll('-',''))));
+        const startKey=String(start); // YYYYMMDD -> YYYY-MM-DD
+        await setDoc(dayRef('__settings__'),{startDate:`${startKey.slice(0,4)}-${startKey.slice(4,6)}-${startKey.slice(6)}`,updatedAt:serverTimestamp()});
+        localStorage.setItem(`english-hive-migrated-${userId}`,'yes');
+        $('migration-banner').hidden=true;
+        setMessage(`✓ Historial importado (${entriesToImport.length} días nuevos). Se conservó la copia local.`);
+      } catch(e) { console.error(e); setMessage('La importación no pudo completarse. Se conserva tu historial local; puedes intentarlo otra vez.',true); }
+      finally { pendingWrite=false;render();showMigration(); }
+    });
+
     render();
   </script>
 </body>
 </html>
+
