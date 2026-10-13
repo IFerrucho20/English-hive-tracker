@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>English Hive | Tracker de estudio</title>
+  <style>
+    :root {
+      --bg: #f6f8fb; --card: #ffffff; --ink: #182538; --muted: #718095;
+      --line: #e5eaf1; --navy: #172c47; --green: #20a36d; --green-bg: #dbf5e8;
+      --orange: #e99b35; --orange-bg: #fff0d9; --grey: #e8edf3;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, 'Segoe UI', Arial, sans-serif; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .shell { max-width: 1180px; margin: auto; padding: 30px 26px 56px; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 26px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .logo { width: 51px; height: 51px; display: grid; place-items: center; background: var(--navy); color: #fff; border-radius: 15px; font-size: 24px; }
+    .eyebrow { text-transform: uppercase; color: #358d72; font-size: 11px; font-weight: 800; letter-spacing: 1.4px; margin: 0 0 4px; }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 33px); letter-spacing: -.8px; }
+    .subtitle { color: var(--muted); margin: 7px 0 0; font-size: 13px; }
+    .start { display:flex; align-items:center; gap:12px; padding: 11px 14px; background:#fff; border:1px solid var(--line); border-radius: 14px; }
+    .start label { font-size: 12px; font-weight: 700; color: var(--muted); }
+    .start input { border: 1px solid var(--line); border-radius: 8px; padding: 8px; color: var(--ink); max-width: 155px; }
+    .stats { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:15px; margin-bottom:18px; }
+    .card { border: 1px solid var(--line); background: var(--card); border-radius: 17px; box-shadow: 0 4px 18px rgba(30,60,90,.03); }
+    .stat { padding: 19px 21px; min-height: 155px; }
+    .stat.hero { background: var(--navy); color: white; border-color: var(--navy); }
+    .stat .label { margin: 0; font-size:12px; font-weight:700; color: var(--muted); }
+    .stat.hero .label { color:#b8c9d9; }
+    .stat .number { font-size: clamp(25px,2.8vw,36px); font-weight: 850; letter-spacing: -.7px; margin: 16px 0 6px; }
+    .stat .detail { color: var(--muted); font-size: 12px; margin:0; line-height:1.5; }
+    .stat.hero .detail { color:#d5e3ee; }
+    .flame { display:inline-block; margin-right:5px; }
+    .section-title { display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:23px 0 12px; }
+    h2 { margin:0; font-size:19px; letter-spacing:-.3px; }
+    .hint { color:var(--muted); font-size:12px; }
+    .comparison { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+    .compare-card { padding:19px 21px; }
+    .compare-top { display:flex; align-items:baseline; justify-content:space-between; gap:9px; flex-wrap:wrap; }
+    .compare-top h3 { margin:0; font-size:14px; }
+    .delta { font-size:12px; font-weight:800; color:var(--muted); }
+    .delta.positive { color: var(--green); }
+    .delta.negative { color:#cc7b1f; }
+    .progress-row { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; margin-top:20px; }
+    .progress-row b { font-size:14px; }
+    .track { height:10px; background:#e9edf3; border-radius:99px; overflow:hidden; margin-top:8px; }
+    .fill { height:100%; width:0; border-radius:99px; background:var(--green); transition: width .25s; }
+    .fill.previous { background:#adb9c8; }
+    .compare-note { color:var(--muted); font-size:11px; line-height:1.5; margin:13px 0 0; }
+    .hive-card { padding:19px 19px 24px; }
+    .hive-scroll { overflow-x:auto; padding:10px 4px 0; }
+    .hive { min-width:760px; }
+    .week { display:grid; grid-template-columns: 112px repeat(7, minmax(0, 1fr)); gap: 3px; align-items:center; min-height:73px; }
+    .week-label { font-size:11px; color:var(--muted); font-weight:700; padding-left:3px; }
+    .hex { width:100%; height:68px; border:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+           clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%); background:var(--grey); color:#65758b;
+           transition:transform .12s, filter .12s; }
+    .hex:nth-child(even) { transform:translateY(5px); }
+    .hex:hover:not(:disabled) { filter:brightness(.96); }
+    .hex:focus-visible { outline:3px solid #222; outline-offset:2px; }
+    .hex[data-status="done"] { background:var(--green); color:white; }
+    .hex[data-status="missed"] { background:var(--orange); color:#392710; }
+    .hex[data-status="selected"] { box-shadow:none; }
+    .hex.selected { filter:drop-shadow(0 0 4px #1d426b); outline:0; }
+    .hex:disabled { background:#f4f6f9; color:#bfc8d3; cursor:default; }
+    .hex .weekday { font-size:10px; font-weight:800; letter-spacing:.65px; }
+    .hex .day { font-size:17px; font-weight:900; line-height:1; }
+    .legend { display:flex; gap:18px; flex-wrap:wrap; margin:20px 5px 1px; font-size:12px; color:#627185; }
+    .legend-item { display:flex; align-items:center; gap:7px; }
+    .swatch { width:12px; height:12px; border-radius:4px; background:var(--grey); }
+    .swatch.green { background:var(--green); } .swatch.orange { background:var(--orange); }
+    .footer-grid { display:grid; grid-template-columns:1.2fr .8fr; gap:15px; margin-top:18px; }
+    .daily { padding:22px; }
+    .daily-head { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:start; }
+    .daily-head h3 { margin:0 0 5px; font-size:17px; }
+    #selected-title { font-size:13px; font-weight:700; color:#526277; }
+    .target { color:var(--muted); font-size:12px; margin-top:6px; }
+    .actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:21px; }
+    .action { border:1px solid var(--line); border-radius:10px; padding:12px 16px; font-size:12px; font-weight:800; background:white; }
+    .action.done { background:var(--green-bg); color:#14794c; border-color:#b7e9d0; }
+    .action.missed { background:var(--orange-bg); color:#975810; border-color:#f5d6a5; }
+    .action.active { outline:2px solid var(--navy); outline-offset:2px; }
+    .action:disabled { opacity:.5; cursor:not-allowed; }
+    .smallprint { font-size:11px; color:var(--muted); margin:15px 0 0; line-height:1.5; }
+    .guide { padding:22px; }
+    .guide h3 { margin:0 0 11px; font-size:16px; }
+    .guide p { font-size:12px; line-height:1.65; color:var(--muted); margin:0 0 9px; }
+    .guide strong { color:var(--ink); }
+    .guide .onfire { display:inline-flex; gap:5px; align-items:center; background:#fff0d6; color:#9b5d11; padding:6px 10px; border-radius:20px; font-size:11px; font-weight:800; }
+    @media (max-width:880px) { .stats { grid-template-columns: repeat(2,minmax(0,1fr)); } .footer-grid { grid-template-columns:1fr; } }
+    @media (max-width:640px) { .shell { padding:18px 13px 38px; } .top { align-items:flex-start; } .stats, .comparison { grid-template-columns:1fr; } .stat { min-height:132px; } .hive-card { padding:15px 12px; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">✦</div>
+        <div>
+          <p class="eyebrow">My English Journey</p>
+          <h1>English Hive Tracker</h1>
+          <p class="subtitle">Constancia diaria para mejorar tu inglés, un día a la vez.</p>
+        </div>
+      </div>
+      <div class="start"><label for="start-date">Comencé el</label><input type="date" id="start-date"></div>
+    </header>
+
+    <section class="stats" aria-label="Indicadores de progreso">
+      <article class="card stat hero"><p class="label">Racha actual</p><div class="number"><span class="flame">🔥</span><span id="streak">0</span> días</div><p class="detail" id="fire-label">Empieza tu racha hoy</p></article>
+      <article class="card stat"><p class="label">Esta semana</p><div class="number" id="weekly-total">0 / 0</div><p class="detail" id="weekly-description">Días cumplidos de los transcurridos</p></article>
+      <article class="card stat"><p class="label">Este mes</p><div class="number" id="monthly-total">0 / 0</div><p class="detail">Días cumplidos de los transcurridos</p></article>
+      <article class="card stat"><p class="label">Mejor racha</p><div class="number" id="best-streak">0 días</div><p class="detail">Tu mejor secuencia desde el inicio</p></article>
+    </section>
+
+    <div class="section-title"><h2>Tu evolución</h2><span class="hint">Comparación de cumplimiento registrado</span></div>
+    <section class="comparison" aria-label="Comparaciones temporales">
+      <article class="card compare-card">
+        <div class="compare-top"><h3>Semana actual vs anterior</h3><span class="delta" id="week-delta">Sin historial</span></div>
+        <div class="progress-row"><span>Esta semana</span><b id="week-current">0 %</b></div><div class="track"><div class="fill" id="week-current-bar"></div></div>
+        <div class="progress-row"><span>Semana anterior</span><b id="week-previous">—</b></div><div class="track"><div class="fill previous" id="week-previous-bar"></div></div>
+        <p class="compare-note">Mismos días de lunes hasta hoy, en semanas consecutivas.</p>
+      </article>
+      <article class="card compare-card">
+        <div class="compare-top"><h3>Mes actual vs anterior</h3><span class="delta" id="month-delta">Sin historial</span></div>
+        <div class="progress-row"><span>Este mes</span><b id="month-current">0 %</b></div><div class="track"><div class="fill" id="month-current-bar"></div></div>
+        <div class="progress-row"><span>Mes anterior</span><b id="month-previous">—</b></div><div class="track"><div class="fill previous" id="month-previous-bar"></div></div>
+        <p class="compare-note">Comparación hasta el mismo día del mes, cuando existe.</p>
+      </article>
+    </section>
+
+    <div class="section-title"><h2>Colmena de hábitos</h2><span class="hint">Selecciona un día para registrar tu estudio</span></div>
+    <section class="card hive-card" aria-label="Seguimiento visual de seis semanas">
+      <div class="hive-scroll"><div class="hive" id="hive"></div></div>
+      <div class="legend" aria-label="Leyenda de colores">
+        <span class="legend-item"><span class="swatch green"></span>Cumplido</span>
+        <span class="legend-item"><span class="swatch orange"></span>No cumplido</span>
+        <span class="legend-item"><span class="swatch"></span>Sin registrar</span>
+      </div>
+    </section>
+
+    <div class="footer-grid">
+      <section class="card daily" aria-label="Registrar un día">
+        <div class="daily-head"><div><h3>Registro del día</h3><div id="selected-title">Hoy</div><div class="target" id="daily-goal">Meta de estudio</div></div><span class="hint" id="today-marker">Selecciona un día</span></div>
+        <div class="actions">
+          <button class="action done" id="mark-done" type="button">✓ Lo cumplí</button>
+          <button class="action missed" id="mark-missed" type="button">○ No cumplí</button>
+          <button class="action" id="clear-day" type="button">Quitar marca</button>
+        </div>
+        <p class="smallprint">Tus marcas se guardan en este navegador automáticamente. Los días sin registrar no se clasifican como fallidos.</p>
+      </section>
+      <section class="card guide" aria-label="Cómo usar el tracker">
+        <h3>Tu sistema de constancia</h3>
+        <p><strong>Verde:</strong> estudiaste. <strong>Naranja:</strong> registraste que no cumpliste. <strong>Gris:</strong> todavía no hay registro.</p>
+        <p>La racha 🔥 cuenta días consecutivos cumplidos. Puedes marcar hoy o corregir cualquier fecha desde el día en que comenzaste.</p>
+        <span class="onfire">🔥 On fire · desde 3 días consecutivos</span>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    // Todo funciona localmente, sin servidores, CDN ni bibliotecas externas.
+    const STORAGE_KEY = 'english-hive-tracker-v1';
+    const WEEKDAYS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
+    // Meta orientativa en minutos de lunes a domingo. Puedes editarla aquí.
+    const GOALS = [30, 60, 75, 60, 30, 75, 30];
+    const $ = (id) => document.getElementById(id);
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const fromKey = (str) => { const [y,m,d] = str.split('-').map(Number); return new Date(y, m-1, d, 12); };
+    const addDays = (d, days) => { const r = new Date(d); r.setDate(r.getDate()+days); return r; };
+    const startOfWeek = (d) => addDays(d, -(d.getDay()+6)%7);
+    const today = new Date();
+    const todayKey = dateKey(today);
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch { saved = {}; }
+    let state = {
+      startDate: /^\d{4}-\d{2}-\d{2}$/.test(saved.startDate) && saved.startDate <= todayKey ? saved.startDate : todayKey,
+      entries: saved.entries && typeof saved.entries === 'object' && !Array.isArray(saved.entries) ? saved.entries : {}
+    };
+    let selected = todayKey;
+    const persist = () => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { console.warn('No se pudo guardar el progreso localmente', e); } };
+    const eligible = (key) => key >= state.startDate && key <= todayKey;
+    const status = (key) => state.entries[key] === 'done' || state.entries[key] === 'missed' ? state.entries[key] : 'pending';
+    const formatDate = (key) => fromKey(key).toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    const percentage = (num, den) => den ? Math.round(100 * num / den) : 0;
+
+    function countPeriod(from, to) {
+      let total = 0, done = 0, missed = 0;
+      for (let d = new Date(from); d <= to; d = addDays(d,1)) {
+        const key = dateKey(d);
+        if (!eligible(key)) continue;
+        total++;
+        if (status(key) === 'done') done++;
+        if (status(key) === 'missed') missed++;
+      }
+      return {total, done, missed, pct:percentage(done,total)};
+    }
+    function streaks() {
+      // No penalizamos hoy mientras está sin registrar: la racha hasta ayer se conserva.
+      let cursor = fromKey(todayKey);
+      const failedToday = status(todayKey) === 'missed';
+      if (status(todayKey) === 'pending') cursor = addDays(cursor, -1);
+      let current = 0;
+      while (!failedToday && dateKey(cursor) >= state.startDate && status(dateKey(cursor)) === 'done') { current++; cursor = addDays(cursor,-1); }
+      let best = 0, run = 0;
+      for (let d=fromKey(state.startDate); d<=fromKey(todayKey); d=addDays(d,1)) {
+        run = status(dateKey(d)) === 'done' ? run+1 : 0;
+        best = Math.max(best,run);
+      }
+      return { current, best };
+    }
+    function previousMonthWindow(date) {
+      const thisStart = new Date(date.getFullYear(),date.getMonth(),1,12);
+      const previousStart = new Date(date.getFullYear(),date.getMonth()-1,1,12);
+      const previousLast = new Date(date.getFullYear(),date.getMonth(),0,12).getDate();
+      const endDay = Math.min(date.getDate(), previousLast);
+      return { thisStart, previousStart, previousEnd:new Date(previousStart.getFullYear(),previousStart.getMonth(),endDay,12) };
+    }
+    function changeText(id, actual, past) {
+      const el = $(id);
+      el.className = 'delta';
+      if (!past.total) {el.textContent = 'Sin historial'; return;}
+      const diff = actual.pct-past.pct;
+      el.textContent = `${diff>0?'↗':diff<0?'↘':'→'} ${diff>0?'+':''}${diff} pp`;
+      if (diff>0) el.classList.add('positive');
+      if (diff<0) el.classList.add('negative');
+    }
+    function progress(currentId, previousId, curr, prev) {
+      $(currentId).textContent = curr.total ? `${curr.pct} %` : '—';
+      $(previousId).textContent = prev.total ? `${prev.pct} %` : '—';
+      $(`${currentId}-bar`).style.width = `${curr.pct}%`;
+      $(`${previousId}-bar`).style.width = `${prev.pct}%`;
+    }
+    function renderStats() {
+      const wStart = startOfWeek(fromKey(todayKey));
+      const wPrevStart = addDays(wStart,-7);
+      const wPrevEnd = addDays(wPrevStart, (fromKey(todayKey).getDay()+6)%7);
+      const currentWeek = countPeriod(wStart,fromKey(todayKey));
+      const previousWeek = countPeriod(wPrevStart,wPrevEnd);
+      const {thisStart,previousStart,previousEnd} = previousMonthWindow(fromKey(todayKey));
+      const currentMonth = countPeriod(thisStart,fromKey(todayKey));
+      const previousMonth = countPeriod(previousStart,previousEnd);
+      const {current,best} = streaks();
+      $('streak').textContent = current;
+      $('best-streak').textContent = `${best} días`;
+      $('fire-label').textContent = current>=3 ? '¡On fire! Mantén el ritmo' : current===2 ? '¡Estás tomando ritmo!' : current===1 ? 'Buen comienzo, sigue así' : 'Empieza tu racha hoy';
+      $('weekly-total').textContent = `${currentWeek.done} / ${currentWeek.total}`;
+      $('monthly-total').textContent = `${currentMonth.done} / ${currentMonth.total}`;
+      progress('week-current','week-previous',currentWeek,previousWeek);
+      progress('month-current','month-previous',currentMonth,previousMonth);
+      changeText('week-delta',currentWeek,previousWeek);
+      changeText('month-delta',currentMonth,previousMonth);
+    }
+    function renderHive() {
+      const container = $('hive');
+      container.replaceChildren();
+      const monday = startOfWeek(fromKey(todayKey));
+      for (let weekBack = 5; weekBack>=0; weekBack--) {
+        const start = addDays(monday, -weekBack*7);
+        const row = document.createElement('div');
+        row.className='week';
+        const label = document.createElement('span');
+        label.className='week-label';
+        label.textContent = weekBack===0 ? 'Esta semana' : start.toLocaleDateString('es-CO',{day:'numeric',month:'short'});
+        row.append(label);
+        for (let i=0; i<7; i++) {
+          const day = addDays(start,i);
+          const key = dateKey(day);
+          const btn=document.createElement('button');
+          btn.type='button'; btn.className='hex'; btn.dataset.date=key;
+          btn.dataset.status=status(key); btn.disabled=!eligible(key);
+          btn.setAttribute('aria-label',`${formatDate(key)}: ${btn.disabled?'No disponible':status(key)==='done'?'Cumplido':status(key)==='missed'?'No cumplido':'Sin registrar'}`);
+          btn.setAttribute('aria-pressed',key===selected?'true':'false');
+          if(key===selected) btn.classList.add('selected');
+          const wd=document.createElement('span'); wd.className='weekday'; wd.textContent=WEEKDAYS[i];
+          const nr=document.createElement('span'); nr.className='day'; nr.textContent=String(day.getDate());
+          btn.append(wd,nr);row.append(btn);
+        }
+        container.append(row);
+      }
+    }
+    function renderDaily() {
+      if (!eligible(selected)) selected = todayKey;
+      $('selected-title').textContent = formatDate(selected);
+      const weekday=(fromKey(selected).getDay()+6)%7;
+      $('daily-goal').textContent=`Meta orientativa: ${GOALS[weekday]} minutos de inglés`;
+      $('today-marker').textContent=selected===todayKey?'Hoy':'Día seleccionado';
+      $('mark-done').classList.toggle('active',status(selected)==='done');
+      $('mark-missed').classList.toggle('active',status(selected)==='missed');
+      $('clear-day').disabled=status(selected)==='pending';
+    }
+    function render() { $('start-date').value=state.startDate; $('start-date').max=todayKey; renderStats(); renderHive(); renderDaily(); }
+    $('hive').addEventListener('click',(e)=>{const btn=e.target.closest('button[data-date]'); if(!btn||btn.disabled)return;selected=btn.dataset.date;renderHive();renderDaily();});
+    function mark(value){ if(!eligible(selected))return; if(value) state.entries[selected]=value; else delete state.entries[selected];persist();render(); }
+    $('mark-done').addEventListener('click',()=>mark('done'));
+    $('mark-missed').addEventListener('click',()=>mark('missed'));
+    $('clear-day').addEventListener('click',()=>mark(null));
+    $('start-date').addEventListener('change',(e)=>{
+      const value=e.target.value;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||value>todayKey){e.target.value=state.startDate;return;}
+      state.startDate=value; if(selected<value) selected=todayKey;persist();render();
+    });
+    render();
+  </script>
+</body>
+</html>
